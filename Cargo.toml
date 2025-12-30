@@ -1,0 +1,25 @@
+[package]
+name = "aoe2-tex-com"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "aoe2_tex_com"
+crate-type = ["cdylib"]
+
+[dependencies]
+image = "=0.25.8" # pinned due to indexing issues
+image_dds = "0.7.2"
+pyo3 = "0.27.2"
