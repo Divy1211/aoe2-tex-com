@@ -35,7 +35,7 @@ pub fn encode_blocks<W: BlockWord>(
 ) -> (Vec<(u8, u8)>, Vec<u8>) {
     let blocks = W::pack(blocks);
     let prev_info = prev_info.map(|(blocks, pw, ph, ox, oy)| {
-        (W::pack(&blocks), pw, ph, ox, oy)
+        (W::pack(&blocks), (pw + 3)/4, (ph + 3)/4, ox/4, oy/4)
     });
     let transparent_block = W::from_bytes(transparent_block);
 

@@ -11,7 +11,7 @@ from utils import timed
 from sld_test.m_utils import bc1_to_bytes, bc4_to_bytes
 
 def main():
-    sld = SldFile.from_file(r"./files/b_indi_university_age3_x2.sld")
+    sld = SldFile.from_file(r"./files/u_vil_male_villager_attackA_x2.sld")
 
     if os.path.exists(r"./frames"):
         shutil.rmtree(r"./frames")
