@@ -3,23 +3,15 @@ import shutil
 
 from aoe2_tex_com import encode, decode, BcFormat, BcQuality
 
-from bfp_rs.types.le import Array
-
 from sld import SldFile
-from sld.sections.sld_frame.bc1_block import Bc1Block
-from sld.sections.sld_frame.bc4_block import Bc4Block
 from sld.sections.sld_frame.layer_header import SldLayerHeader
 
 from utils import timed
 
-def bc1_to_bytes(pixels: list[Bc1Block]) -> bytes:
-    return Array[len(pixels)][Bc1Block].to_bytes(pixels)
-
-def bc4_to_bytes(pixels: list[Bc4Block]) -> bytes:
-    return Array[len(pixels)][Bc4Block].to_bytes(pixels)
+from sld_test.m_utils import bc1_to_bytes, bc4_to_bytes
 
 def main():
-    sld = SldFile.from_file(r"./files/b_orie_stable_age2_x2.sld")
+    sld = SldFile.from_file(r"./files/b_indi_university_age3_x2.sld")
 
     if os.path.exists(r"./frames"):
         shutil.rmtree(r"./frames")
@@ -29,7 +21,7 @@ def main():
         prev, p_width, p_height = None, None, None
         p_x1, p_y1 = None, None
         for i, frame in enumerate(sld.frames):
-            layer = frame.damage_mask_layer
+            layer = frame.main_layer
             bytes_ = bc1_to_bytes(layer.pixels)
             # print(i, layer.header.storage_scheme)
 

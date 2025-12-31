@@ -3,6 +3,7 @@ use image::{ImageBuffer, Rgba};
 use image_dds::{ImageFormat, Mipmaps, Quality, Surface};
 use pyo3::{pyfunction, PyResult};
 use pyo3::exceptions::PyValueError;
+use crate::bc1_transparency::fix_bc1_transparency;
 use crate::format::{BcFormat, BcQuality};
 use crate::helper;
 
@@ -20,7 +21,7 @@ pub fn encode(
     prev_info: Option<(Vec<u8>, u32, u32, i32, i32)>,
 ) -> PyResult<(Vec<u8>, Option<(Vec<(u8, u8)>, Vec<u8>)>)> {
     let image = image::load_from_memory(bytes).unwrap().to_rgba8();
-    let surface = image_dds::SurfaceRgba8::from_image(&image).encode(
+    let mut surface = image_dds::SurfaceRgba8::from_image(&image).encode(
         match format {
             BcFormat::Bc1 => ImageFormat::BC1RgbaUnorm,
             BcFormat::Bc4 => ImageFormat::BC4RUnorm,
@@ -34,6 +35,10 @@ pub fn encode(
         Mipmaps::Disabled,
     ).map_err(|e| PyValueError::new_err(e.to_string()))?;
 
+    if matches!(format, BcFormat::Bc1) {
+        fix_bc1_transparency(&mut surface.data, &image, surface.width, surface.height);
+    }
+    
     if !gen_commands {
         return Ok((surface.data, None));
     }

@@ -39,7 +39,7 @@ def decode(
     commands: list[tuple[int, int]] = None,
 
     prev_info: tuple[bytes, int, int, int, int] = None,
-) -> (bytes, bytes):
+) -> tuple[bytes, bytes]:
     """
     Decode compressed bytes into raw image bytes
 

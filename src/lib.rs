@@ -3,6 +3,8 @@ mod encode_decode;
 mod helper;
 mod pack;
 
+mod bc1_transparency;
+
 use pyo3::prelude::*;
 use crate::format::{BcFormat, BcQuality};
 use crate::encode_decode::{encode, decode};
