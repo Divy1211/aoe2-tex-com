@@ -4,9 +4,21 @@ use image_dds::{ImageFormat, Mipmaps, Quality, Surface};
 use pyo3::{pyfunction, PyResult};
 use pyo3::exceptions::PyValueError;
 use crate::format::{BcFormat, BcQuality};
+use crate::helper;
 
+#[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
-pub fn encode(bytes: &[u8], format: BcFormat, quality: BcQuality) -> PyResult<Vec<u8>> {
+#[pyo3(signature = (
+    bytes, format = BcFormat::Bc1, quality = BcQuality::Slow, gen_commands = false, prev_info = None
+))]
+pub fn encode(
+    bytes: &[u8],
+    format: BcFormat,
+    quality: BcQuality,
+    gen_commands: bool,
+    prev_info: Option<(Vec<u8>, u32, u32, i32, i32)>,
+) -> PyResult<(Vec<u8>, Option<(Vec<(u8, u8)>, Vec<u8>)>)> {
     let image = image::load_from_memory(bytes).unwrap().to_rgba8();
     let surface = image_dds::SurfaceRgba8::from_image(&image).encode(
         match format {
@@ -21,38 +33,60 @@ pub fn encode(bytes: &[u8], format: BcFormat, quality: BcQuality) -> PyResult<Ve
         },
         Mipmaps::Disabled,
     ).map_err(|e| PyValueError::new_err(e.to_string()))?;
-    Ok(surface.data)
+
+    if !gen_commands {
+        return Ok((surface.data, None));
+    }
+    
+    let (width, height) = (surface.width, surface.height);
+
+    let block_width = (width + 3) / 4;
+    let block_height = (height + 3) / 4;
+
+    let total_blocks = (block_width * block_height) as usize;
+
+    let (_block_size, transparent_block) = match format {
+        BcFormat::Bc1 => (8, vec![0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF]),
+        BcFormat::Bc4 => (8, vec![0_u8; 8]),
+        BcFormat::Bc7 => {
+            let mut block = vec![0_u8; 16];
+            block[0] = 0x40;
+            (16, block)
+        },
+    };
+
+    let encoded_data = match format {
+        BcFormat::Bc1 | BcFormat::Bc4 => {
+            helper::encode_blocks::<u64>(&surface.data, block_width, total_blocks, &transparent_block, prev_info)
+        }
+        BcFormat::Bc7 => {
+            helper::encode_blocks::<u128>(&surface.data, block_width, total_blocks, &transparent_block, prev_info)
+        }
+    };
+    
+    Ok((surface.data, Some(encoded_data)))
 }
 
 #[allow(clippy::too_many_arguments)]
 #[pyfunction]
-#[pyo3(signature = (bytes, width, height, format, commands = None, prev_blocks = None, prev_width = None, prev_height = None, off_x = None, off_y = None))]
+#[pyo3(signature = (
+    bytes, width, height, format, commands = None, prev_info = None
+))]
 pub fn decode(
     bytes: Vec<u8>,
     width: u32,
     height: u32,
     format: BcFormat,
     commands: Option<Vec<(u8, u8)>>,
-    prev_blocks: Option<Vec<u8>>,
-    prev_width: Option<u32>,
-    prev_height: Option<u32>,
-    off_x: Option<i32>,
-    off_y: Option<i32>,
+    prev_info: Option<(Vec<u8>, u32, u32, i32, i32)>,
 ) -> PyResult<(Vec<u8>, Vec<u8>)> {
     let data = if let Some(commands) = commands {
-        if prev_blocks.is_some() && (prev_width.is_none() || prev_height.is_none() || off_x.is_none() || off_y.is_none()) {
-            return Err(PyValueError::new_err(
-                "prev_blocks provided, but one of prev_width, prev_height, off_x, off_y was not provided"
-            ));
-        }
-        
         let block_width = (width + 3) / 4;
         let block_height = (height + 3) / 4;
 
-        let prev_width = prev_width.map(|w| (w + 3) / 4);
-        let prev_height = prev_height.map(|h| (h + 3) / 4);
-        let off_x = off_x.map(|x| x / 4);
-        let off_y = off_y.map(|y| y / 4);
+        let prev_info = prev_info.map(|(blocks, w, h, ox, oy)| {
+            (blocks, (w + 3)/4, (h + 3)/4, ox/4, oy/4)
+        });
         
         let total_blocks = (block_width * block_height) as usize;
 
@@ -82,22 +116,15 @@ pub fn decode(
                 )))
             }
 
-            if let Some(prev_blocks) = prev_blocks.as_ref() {
-                let (prev_width, prev_height, off_x, off_y) = unsafe {
-                    (
-                        prev_width.unwrap_unchecked() as isize,
-                        prev_height.unwrap_unchecked() as isize,
-                        off_x.unwrap_unchecked() as isize,
-                        off_y.unwrap_unchecked() as isize,
-                    )
-                };
+            if let Some((ref prev_blocks, prev_width, prev_height, off_x, off_y)) = prev_info {
                 for i in 0..skip as usize {
-                    let (row, col) = ((block_idx + i)/block_width as usize, (block_idx + i)%block_width as usize);
-                    let (row, col) = (row as isize - off_y, col as isize - off_x);
-                    if col >= prev_width || row >= prev_height || row < 0 || col < 0 {
+                    let row = (block_idx + i) as i32 / block_width as i32 - off_y;
+                    let col = (block_idx + i) as i32 % block_width as i32 - off_x;
+                    
+                    if row < 0 || col < 0 || row >= prev_height as i32 || col >= prev_width as i32 {
                         full_compressed.extend_from_slice(&transparent_block);
                     } else {
-                        let pos = (row * prev_width + col) as usize * block_size;
+                        let pos = (row * prev_width as i32 + col) as usize * block_size;
                         if pos + block_size <= prev_blocks.len() {
                             full_compressed.extend_from_slice(&prev_blocks[pos..pos + block_size]);
                         } else {

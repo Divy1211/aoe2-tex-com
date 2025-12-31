@@ -1,4 +1,5 @@
 import os.path
+import shutil
 
 from aoe2_tex_com import encode, decode, BcFormat, BcQuality
 
@@ -18,13 +19,17 @@ def bc4_to_bytes(pixels: list[Bc4Block]) -> bytes:
     return Array[len(pixels)][Bc4Block].to_bytes(pixels)
 
 def main():
-    sld = SldFile.from_file(r"./files/u_vil_male_villager_attackA_x2.sld")
+    sld = SldFile.from_file(r"./files/b_orie_stable_age2_x2.sld")
+
+    if os.path.exists(r"./frames"):
+        shutil.rmtree(r"./frames")
+    os.mkdir(r"./frames")
 
     with timed("decode"):
         prev, p_width, p_height = None, None, None
         p_x1, p_y1 = None, None
         for i, frame in enumerate(sld.frames):
-            layer = frame.main_layer
+            layer = frame.damage_mask_layer
             bytes_ = bc1_to_bytes(layer.pixels)
             # print(i, layer.header.storage_scheme)
 
@@ -39,16 +44,14 @@ def main():
 
             commands = [(cmd.num_blocks_skipped, cmd.num_blocks_drawn) for cmd in layer.draw_commands]
 
-            extras = ()
+            extras = None
             if layer.header.storage_scheme & 128:
                 extras = (prev, p_width, p_height, p_x1 - x1, p_y1 - y1)
                 # print(i, extras[1:], (x1, y1), (p_x1, p_y1))
 
-            img, prev = decode(bytes_, width, height, BcFormat.Bc1, commands, *extras)
+            img, prev = decode(bytes_, width, height, BcFormat.Bc1, commands, extras)
             p_width, p_height = width, height
             p_x1, p_y1 = x1, y1
-            if not os.path.exists(r"./frames"):
-                os.mkdir(r"./frames")
 
             with open(rf"./frames/frame{i}.png", "wb") as file:
                 file.write(img)

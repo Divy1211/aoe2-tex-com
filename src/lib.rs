@@ -1,5 +1,7 @@
 mod format;
 mod encode_decode;
+mod helper;
+mod pack;
 
 use pyo3::prelude::*;
 use crate::format::{BcFormat, BcQuality};
