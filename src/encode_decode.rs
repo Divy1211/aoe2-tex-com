@@ -8,7 +8,6 @@ use crate::format::{BcFormat, BcQuality};
 use crate::helper;
 
 #[allow(clippy::type_complexity)]
-#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 #[pyo3(signature = (
     bytes, format = BcFormat::Bc1, quality = BcQuality::Slow, gen_commands = false, prev_info = None
@@ -72,7 +71,6 @@ pub fn encode(
     Ok((surface.data, Some(encoded_data)))
 }
 
-#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 #[pyo3(signature = (
     bytes, width, height, format, commands = None, prev_info = None

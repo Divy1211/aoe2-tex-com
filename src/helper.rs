@@ -1,6 +1,5 @@
 use crate::pack::BlockWord;
 
-#[allow(clippy::too_many_arguments)]
 #[inline]
 pub fn block_is_skip<T: Copy + Eq>(
     idx: usize,
@@ -25,7 +24,6 @@ pub fn block_is_skip<T: Copy + Eq>(
     cur == prev[pidx]
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn encode_blocks<W: BlockWord>(
     blocks: &[u8],
     block_width: u32,

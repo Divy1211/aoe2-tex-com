@@ -73,3 +73,4 @@ docs/_build/
 *.smx
 *.sld
 sld_test/frames/*.*
+sld_test/test_frames/*.*

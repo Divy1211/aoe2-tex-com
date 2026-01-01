@@ -11,7 +11,7 @@ from utils import timed
 from sld_test.m_utils import bc1_to_bytes, bc4_to_bytes
 
 def main():
-    sld = SldFile.from_file(r"./files/u_vil_male_villager_attackA_x2.sld")
+    sld = SldFile.from_file(r"./files/b_west_blacksmith_age2_x2.sld")
 
     if os.path.exists(r"./frames"):
         shutil.rmtree(r"./frames")
@@ -22,7 +22,13 @@ def main():
         p_x1, p_y1 = None, None
         for i, frame in enumerate(sld.frames):
             layer = frame.main_layer
-            bytes_ = bc1_to_bytes(layer.pixels)
+            if layer.header.storage_scheme & 1:
+                bytes_ = bc4_to_bytes(layer.pixels)
+                format = BcFormat.Bc4
+            else:
+                bytes_ = bc1_to_bytes(layer.pixels)
+                format = BcFormat.Bc1
+
             # print(i, layer.header.storage_scheme)
 
             if isinstance(layer.header, SldLayerHeader):
@@ -41,11 +47,11 @@ def main():
                 extras = (prev, p_width, p_height, p_x1 - x1, p_y1 - y1)
                 # print(i, extras[1:], (x1, y1), (p_x1, p_y1))
 
-            img, prev = decode(bytes_, width, height, BcFormat.Bc1, commands, extras)
+            img, prev = decode(bytes_, width, height, format, commands, extras)
             p_width, p_height = width, height
             p_x1, p_y1 = x1, y1
 
-            with open(rf"./frames/frame{i}.png", "wb") as file:
+            with open(rf"./frames/frame_m{i}.png", "wb") as file:
                 file.write(img)
 
 if __name__ == "__main__":
