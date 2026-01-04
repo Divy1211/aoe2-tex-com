@@ -1,3 +1,4 @@
+use crate::format::DrawCall;
 use crate::pack::BlockWord;
 
 #[inline]
@@ -29,11 +30,11 @@ pub fn encode_blocks<W: BlockWord>(
     block_width: u32,
     total_blocks: usize,
     transparent_block: &[u8],
-    prev_info: Option<(Vec<u8>, u32, u32, i32, i32)>,
-) -> (Vec<(u8, u8)>, Vec<u8>) {
+    prev_info: Option<(&[u8], u32, u32, i32, i32)>,
+) -> (Vec<DrawCall>, Vec<u8>) {
     let blocks = W::pack(blocks);
     let prev_info = prev_info.map(|(blocks, pw, ph, ox, oy)| {
-        (W::pack(&blocks), (pw + 3)/4, (ph + 3)/4, ox/4, oy/4)
+        (W::pack(blocks), (pw + 3)/4, (ph + 3)/4, ox/4, oy/4)
     });
     let transparent_block = W::from_bytes(transparent_block);
 
@@ -59,7 +60,7 @@ pub fn encode_blocks<W: BlockWord>(
         }
 
         if skip != 0 || draw != 0 {
-            commands.push((skip, draw));
+            commands.push(DrawCall::new(skip, draw));
             drawn_blocks.extend_from_slice(&blocks[draw_start..idx])
         }
     }

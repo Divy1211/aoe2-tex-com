@@ -9,3 +9,10 @@ class BcFormat(IntEnum):
     Bc1 = 0
     Bc4 = 1
     Bc7 = 2
+
+class DrawCall:
+    skip: int
+    draw: int
+
+    def __new__(cls, skip: int, draw: int):
+        ...

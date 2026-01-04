@@ -1,4 +1,4 @@
-from aoe2_tex_com.format import BcFormat, BcQuality
+from aoe2_tex_com.format import BcFormat, BcQuality, DrawCall
 
 from typing import Optional
 
@@ -9,7 +9,7 @@ def encode(
     gen_commands: bool = False,
 
     prev_info: tuple[bytes, int, int, int, int] = None,
-) -> tuple[bytes, Optional[tuple[list[int, int], bytes]]]:
+) -> tuple[bytes, Optional[tuple[list[DrawCall], bytes]]]:
     """
     Encode the given image bytes using the format and the provided quality
 
@@ -36,7 +36,7 @@ def decode(
     width: int,
     height: int,
     format: BcFormat,
-    commands: list[tuple[int, int]] = None,
+    commands: list[DrawCall] = None,
 
     prev_info: tuple[bytes, int, int, int, int] = None,
 ) -> tuple[bytes, bytes]:

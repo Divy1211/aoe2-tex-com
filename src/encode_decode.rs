@@ -4,7 +4,7 @@ use image_dds::{ImageFormat, Mipmaps, Quality, Surface};
 use pyo3::{pyfunction, PyResult};
 use pyo3::exceptions::PyValueError;
 use crate::bc1_transparency::fix_bc1_transparency;
-use crate::format::{BcFormat, BcQuality};
+use crate::format::{BcFormat, BcQuality, DrawCall};
 use crate::helper;
 
 #[allow(clippy::type_complexity)]
@@ -17,9 +17,12 @@ pub fn encode(
     format: BcFormat,
     quality: BcQuality,
     gen_commands: bool,
-    prev_info: Option<(Vec<u8>, u32, u32, i32, i32)>,
-) -> PyResult<(Vec<u8>, Option<(Vec<(u8, u8)>, Vec<u8>)>)> {
-    let image = image::load_from_memory(bytes).unwrap().to_rgba8();
+    prev_info: Option<(&[u8], u32, u32, i32, i32)>,
+) -> PyResult<(Vec<u8>, Option<(Vec<DrawCall>, Vec<u8>)>)> {
+    let image = image::load_from_memory(bytes)
+        .map_err(|e| PyValueError::new_err(format!("Failed to load image: {}", e)))?
+        .to_rgba8();
+
     let mut surface = image_dds::SurfaceRgba8::from_image(&image).encode(
         match format {
             BcFormat::Bc1 => ImageFormat::BC1RgbaUnorm,
@@ -80,8 +83,8 @@ pub fn decode(
     width: u32,
     height: u32,
     format: BcFormat,
-    commands: Option<Vec<(u8, u8)>>,
-    prev_info: Option<(Vec<u8>, u32, u32, i32, i32)>,
+    commands: Option<Vec<DrawCall>>,
+    prev_info: Option<(&[u8], u32, u32, i32, i32)>,
 ) -> PyResult<(Vec<u8>, Vec<u8>)> {
     let data = if let Some(commands) = commands {
         let block_width = (width + 3) / 4;
@@ -109,9 +112,9 @@ pub fn decode(
         let mut off = 0_usize;
         let mut block_idx = 0_usize;
         
-        for (skip, draw) in commands {
+        for cmd in commands {
             let start = full_compressed.len();
-            let len = skip as usize * block_size;
+            let len = cmd.skip as usize * block_size;
             if start + len > full_compressed.capacity() {
                 return Err(PyValueError::new_err(format!(
                     "Too many skip/draw calls ({} calls) for the specified dimensions ({width}x{height})",
@@ -119,8 +122,8 @@ pub fn decode(
                 )))
             }
 
-            if let Some((ref prev_blocks, prev_width, prev_height, off_x, off_y)) = prev_info {
-                for i in 0..skip as usize {
+            if let Some((prev_blocks, prev_width, prev_height, off_x, off_y)) = prev_info {
+                for i in 0..cmd.skip as usize {
                     let row = (block_idx + i) as i32 / block_width as i32 - off_y;
                     let col = (block_idx + i) as i32 % block_width as i32 - off_x;
                     
@@ -142,7 +145,7 @@ pub fn decode(
                 full_compressed.set_len(start + len);
                 let mut dst = full_compressed.as_mut_ptr().add(start);
 
-                for _ in 0..skip {
+                for _ in 0..cmd.skip {
                     ptr::copy_nonoverlapping(
                         transparent_block.as_ptr(),
                         dst,
@@ -152,7 +155,7 @@ pub fn decode(
                 }
             }}
 
-            let len = draw as usize * block_size;
+            let len = cmd.draw as usize * block_size;
             if off+len > bytes.len() {
                 return Err(PyValueError::new_err(format!(
                     "Block data ({} bytes) is too small for the specified dimensions ({width}x{height})",
@@ -161,7 +164,7 @@ pub fn decode(
             }
             full_compressed.extend_from_slice(&bytes[off..off+len]);
             off += len;
-            block_idx += skip as usize + draw as usize;
+            block_idx += cmd.skip as usize + cmd.draw as usize;
         }
 
         full_compressed

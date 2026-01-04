@@ -25,7 +25,7 @@ pub struct ProcessedFrame {
 
 #[allow(clippy::type_complexity)]
 #[pyfunction]
-#[pyo3(signature = (frame_info, format = BcFormat::Bc1))]
+#[pyo3(name = "preprocess", signature = (frame_info, format = BcFormat::Bc1))]
 pub fn preprocess_frames(
     frame_info: Vec<(PathBuf, (i32, i32))>,
     format: BcFormat,
@@ -90,7 +90,7 @@ pub fn preprocess_frames(
         let offset_x2 = offset_x1 + new_width;
         let offset_y2 = offset_y1 + new_height;
         
-        let mut image_bytes = Vec::with_capacity((new_width * new_height * 4) as usize);
+        let mut image_bytes = Vec::new();
         processed_img
             .write_to(&mut std::io::Cursor::new(&mut image_bytes), image::ImageFormat::Png)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;

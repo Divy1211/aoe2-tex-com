@@ -10,7 +10,7 @@ class ProcessedFrame:
     anchor_x: int
     anchor_y: int
 
-def preprocess_frames(
+def preprocess(
     frame_info: list[tuple[str, tuple[int, int]]],
     format: BcFormat = BcFormat.Bc1,
 ) -> tuple[list[ProcessedFrame], tuple[int, int], tuple[int, int]]:
